@@ -12,6 +12,8 @@
 
 import os, tempfile,signal
 from configparser import RawConfigParser
+import time
+from threading import Thread
 
 OUT     = 2
 IN      = 1
@@ -53,6 +55,52 @@ GPIO_NAMES = [
     "GND","GPIO21"
 ]
 
+
+PIN_TO_GPIO = {'pin14': 22,
+               'pin6': 4,
+               'pin10': 17,
+              }
+
+event_detector = {}
+event_callback = {}
+
+
+class Eventer(Thread):
+    
+    def __init__(self):
+        Thread.__init__(self)
+        self.old_conf = {}
+        self.running = True
+
+    def stop(self):
+        self.running = False
+
+    def run(self):
+        while self.running:
+            c = RawConfigParser()
+            c.read(WORK_FILE)
+            for key, section in c.items():
+                if self.old_conf.get(key, {}).get('value') is not None:
+                    # RISING and BOTH
+                    if self.old_conf[key]['value'] == 0 and section.getint('value') == 1:
+                        if event_detector[PIN_TO_GPIO[key]] in [RISING, BOTH]:
+                            event_callback[PIN_TO_GPIO[key]](PIN_TO_GPIO[key])
+                    # FALLING and BOTH
+                    if self.old_conf[key]['value'] == 1 and section.getint('value') == 0:
+                        if event_detector[PIN_TO_GPIO[key]] in [FALLING, BOTH]:
+                            event_callback[PIN_TO_GPIO[key]](PIN_TO_GPIO[key])
+                # seems useless ...
+#                if self.old_conf.get(key, {}).get('state') is not None:
+#                    if self.old_conf[key]['state'] != section.getint('state'):
+#                        event_callback[PIN_TO_GPIO[key]](PIN_TO_GPIO[key])
+                # save values
+                if self.old_conf.get(key) is None:
+                    self.old_conf[key] = {}
+                self.old_conf[key]['value'] = section.getint('value')
+                self.old_conf[key]['state'] = section.getint('state')
+            # Sleep
+            time.sleep(0.1)
+
 def check():
 	if not os.path.exists(WORK_FILE):
 		print("")
@@ -68,7 +116,7 @@ def check():
 
     
 
-def setup(pin, mode, pull_up_down=PUD_OFF):
+def setup(pin, mode, initial=LOW, pull_up_down=PUD_OFF):
     """Set the input or output mode for a specified pin.  Mode should be
     either OUT or IN."""
     check()
@@ -173,7 +221,8 @@ def add_event_detect(pin, edge):
     should be type IN.  Edge must be RISING, FALLING or BOTH.
     """
     check()
-    raise NotImplementedError
+    event_detector[pin] = edge
+    #raise NotImplementedError
 
 def remove_event_detect(pin):
     """Remove edge detection for a particular GPIO channel.  Pin should be
@@ -187,7 +236,8 @@ def add_event_callback(pin, callback):
     Pin should be type IN.
     """
     check()
-    raise NotImplementedError
+    event_callback[pin] = callback
+    #raise NotImplementedError
 
 def event_detected(pin):
     """Returns True if an edge has occured on a given GPIO.  You need to 

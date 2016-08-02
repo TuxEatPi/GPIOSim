@@ -277,19 +277,22 @@ class GPIOSim(Frame):
 #End Class
 
 
-  
-root = Tk()
+def main():  
+    root = Tk()
 
-ex = GPIOSim(root)
+    ex = GPIOSim(root)
 
-def poll():
+    def poll():
+        root.after(500, poll)
     root.after(500, poll)
-root.after(500, poll)
 
-def updateHandler(signum,frame):
-    ex.updateUI()
+    def updateHandler(signum,frame):
+        ex.updateUI()
 
-signal.signal(signal.SIGUSR1,updateHandler)
+    signal.signal(signal.SIGUSR1,updateHandler)
 
-root.geometry(ex.WIN_SIZE)
-root.mainloop()  
+    root.geometry(ex.WIN_SIZE)
+    root.mainloop()  
+
+if __name__ == '__main__':
+    main()
