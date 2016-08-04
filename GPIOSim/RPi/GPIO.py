@@ -28,6 +28,8 @@ PUD_OFF  = 0
 PUD_DOWN = 1
 PUD_UP   = 2
 
+# TODO find true value
+BCM = 2
 
 WORK_DIR = os.path.join(tempfile.gettempdir(), "GPIOSim")
 WORK_FILE = os.path.join(WORK_DIR, "pins.ini")
@@ -67,6 +69,8 @@ GPIO_TO_PIN = dict((v, k) for k, v in PIN_TO_GPIO.items())
 event_detector = {}
 event_callback = {}
 
+def setmode(mode):
+    return
 
 class Eventer(Thread):
     
@@ -261,7 +265,9 @@ def cleanup(pin=None):
     is specified.
     """
     check()
-    raise NotImplementedError
+    os.remove(WORK_FILE)
+    os.removedirs(WORK_DIR)
+    #raise NotImplementedError
 
 
 # helper functions useful to derived classes
