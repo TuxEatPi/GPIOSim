@@ -59,7 +59,10 @@ GPIO_NAMES = [
 PIN_TO_GPIO = {'pin14': 22,
                'pin6': 4,
                'pin10': 17,
+               'pin21': 25,
               }
+GPIO_TO_PIN = dict((v, k) for k, v in PIN_TO_GPIO.items())
+
 
 event_detector = {}
 event_callback = {}
