@@ -34,6 +34,31 @@ BCM = 2
 WORK_DIR = os.path.join(tempfile.gettempdir(), "GPIOSim")
 WORK_FILE = os.path.join(WORK_DIR, "pins.ini")
 
+
+GPIO_STATE_DEFAULT = [
+        0, 0,  #3v3   , 5v
+        3, 0,  #GPIO2 , 5V
+        3, 0,  #GPIO3 , GND 
+        3, 3,  #GPIO4 , GPIO14
+        0, 3,  #GND   , GPIO15
+        3, 3,  #GPIO17, GPIO18
+        3, 0,  #GPIO27, GND
+        3, 3,  #GPIO22, GPIO23
+        0, 3,  #3V3   , GPIO24
+        3, 0,  #GPIO10, GND
+        3, 3,  #GPIO9 , GPIO25
+        3, 3,  #GPIO11, GPIO8
+        0, 3,  #GND   , GPIO7
+        0, 0,  #I2C   , I2C     #FROM HERE
+        3, 0,  #GPIO5 , GND     #RPI >= B+
+        3, 3,  #GPIO6 , GPIO12
+        3, 0,  #GPIO13, GND
+        3, 3,  #GPIO19, GPIO16
+        3, 3,  #GPIO26, GPIO20
+        0, 3   #GND   , GPIO21
+    ]
+
+
 GPIO_NAMES = [
     "3v3","5v",
     "GPIO2","5V",
@@ -72,6 +97,25 @@ event_callback = {}
 def setmode(mode):
     return
 
+def init():
+    cleanup()
+    if not os.path.exists(WORK_FILE):
+        os.makedirs(WORK_DIR)
+
+    c = RawConfigParser()
+    c.read(WORK_FILE)
+
+
+    for i in range(0,40):
+        c.add_section("pin"+str(i))
+
+        c.set("pin"+str(i),"state",str(GPIO_STATE_DEFAULT[i]))
+        c.set("pin"+str(i),"value", "0")
+
+    with open(WORK_FILE, 'w') as configfile:
+        c.write(configfile)
+
+
 class Eventer(Thread):
     
     def __init__(self):
@@ -84,10 +128,12 @@ class Eventer(Thread):
 
     def run(self):
         while self.running:
+
             c = RawConfigParser()
             c.read(WORK_FILE)
             for key, section in c.items():
-                if self.old_conf.get(key, {}).get('value') is not None:
+                # TODO find what means state
+                if self.old_conf.get(key, {}).get('value') is not None and section.getint('state') == 1:
                     # RISING and BOTH
                     if self.old_conf[key]['value'] == 0 and section.getint('value') == 1:
                         if event_detector[PIN_TO_GPIO[key]] in [RISING, BOTH]:
@@ -96,10 +142,6 @@ class Eventer(Thread):
                     if self.old_conf[key]['value'] == 1 and section.getint('value') == 0:
                         if event_detector[PIN_TO_GPIO[key]] in [FALLING, BOTH]:
                             event_callback[PIN_TO_GPIO[key]](PIN_TO_GPIO[key])
-                # seems useless ...
-#                if self.old_conf.get(key, {}).get('state') is not None:
-#                    if self.old_conf[key]['state'] != section.getint('state'):
-#                        event_callback[PIN_TO_GPIO[key]](PIN_TO_GPIO[key])
                 # save values
                 if self.old_conf.get(key) is None:
                     self.old_conf[key] = {}
@@ -264,9 +306,11 @@ def cleanup(pin=None):
     """Clean up GPIO event detection for specific pin, or all pins if none 
     is specified.
     """
-    check()
-    os.remove(WORK_FILE)
-    os.removedirs(WORK_DIR)
+#    check()
+    if os.path.exists(WORK_FILE):
+        os.remove(WORK_FILE)
+    if os.path.exists(WORK_DIR):
+        os.removedirs(WORK_DIR)
     #raise NotImplementedError
 
 
