@@ -127,28 +127,30 @@ class Eventer(Thread):
         self.running = False
 
     def run(self):
+        c = RawConfigParser()
         while self.running:
-
-            c = RawConfigParser()
-            c.read(WORK_FILE)
-            for key, section in c.items():
-                # TODO find what means state
-                if self.old_conf.get(key, {}).get('value') is not None and section.getint('state') == 1:
-                    # RISING and BOTH
-                    if self.old_conf[key]['value'] == 0 and section.getint('value') == 1:
-                        if event_detector[PIN_TO_GPIO[key]] in [RISING, BOTH]:
-                            event_callback[PIN_TO_GPIO[key]](PIN_TO_GPIO[key])
-                    # FALLING and BOTH
-                    if self.old_conf[key]['value'] == 1 and section.getint('value') == 0:
-                        if event_detector[PIN_TO_GPIO[key]] in [FALLING, BOTH]:
-                            event_callback[PIN_TO_GPIO[key]](PIN_TO_GPIO[key])
-                # save values
-                if self.old_conf.get(key) is None:
-                    self.old_conf[key] = {}
-                self.old_conf[key]['value'] = section.getint('value')
-                self.old_conf[key]['state'] = section.getint('state')
-            # Sleep
-            time.sleep(0.1)
+            try:
+                c.read(WORK_FILE)
+                for key, section in c.items():
+                    # TODO find what means state
+                    if self.old_conf.get(key, {}).get('value') is not None and section.getint('state') == 1:
+                        # RISING and BOTH
+                        if self.old_conf[key]['value'] == 0 and section.getint('value') == 1:
+                            if event_detector[PIN_TO_GPIO[key]] in [RISING, BOTH]:
+                                event_callback[PIN_TO_GPIO[key]](PIN_TO_GPIO[key])
+                        # FALLING and BOTH
+                        if self.old_conf[key]['value'] == 1 and section.getint('value') == 0:
+                            if event_detector[PIN_TO_GPIO[key]] in [FALLING, BOTH]:
+                                event_callback[PIN_TO_GPIO[key]](PIN_TO_GPIO[key])
+                    # save values
+                    if self.old_conf.get(key) is None:
+                        self.old_conf[key] = {}
+                    self.old_conf[key]['value'] = section.getint('value')
+                    self.old_conf[key]['state'] = section.getint('state')
+                # Sleep
+                time.sleep(0.1)
+            except Exception:
+                pass
 
 def check():
 	if not os.path.exists(WORK_FILE):
