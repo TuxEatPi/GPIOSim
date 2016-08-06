@@ -94,6 +94,9 @@ GPIO_TO_PIN = dict((v, k) for k, v in PIN_TO_GPIO.items())
 event_detector = {}
 event_callback = {}
 
+PARSER = RawConfigParser()
+
+
 def setmode(mode):
     return
 
@@ -102,18 +105,19 @@ def init():
     if not os.path.exists(WORK_FILE):
         os.makedirs(WORK_DIR)
 
-    c = RawConfigParser()
-    c.read(WORK_FILE)
+    
+    PARSER.read(WORK_FILE)
 
 
     for i in range(0,40):
-        c.add_section("pin"+str(i))
+        if not PARSER.has_section("pin"+str(i)):
+            PARSER.add_section("pin"+str(i))
 
-        c.set("pin"+str(i),"state",str(GPIO_STATE_DEFAULT[i]))
-        c.set("pin"+str(i),"value", "0")
+        PARSER.set("pin"+str(i),"state",str(GPIO_STATE_DEFAULT[i]))
+        PARSER.set("pin"+str(i),"value", "0")
 
     with open(WORK_FILE, 'w') as configfile:
-        c.write(configfile)
+        PARSER.write(configfile)
 
 
 class Eventer(Thread):
@@ -127,11 +131,11 @@ class Eventer(Thread):
         self.running = False
 
     def run(self):
-        c = RawConfigParser()
+        
         while self.running:
             try:
-                c.read(WORK_FILE)
-                for key, section in c.items():
+                PARSER.read(WORK_FILE)
+                for key, section in PARSER.items():
                     # TODO find what means state
                     if self.old_conf.get(key, {}).get('value') is not None and section.getint('state') == 1:
                         # RISING and BOTH
@@ -172,19 +176,19 @@ def setup(pin, mode, initial=LOW, pull_up_down=PUD_OFF):
     either OUT or IN."""
     check()
         
-    c = RawConfigParser()
-    c.read(WORK_FILE)
+    
+    PARSER.read(WORK_FILE)
 
     pin = GPIO_NAMES.index("GPIO"+str(pin))
 
-    if c.getint("pin"+str(pin),"state") == 0:
+    if PARSER.getint("pin"+str(pin),"state") == 0:
         raise Exception
 
-    c.set("pin"+str(pin),"state",str(mode))
+    PARSER.set("pin"+str(pin),"state",str(mode))
     if mode==OUT:
-        c.set("pin"+str(mode),"value","0")
+        PARSER.set("pin"+str(mode),"value","0")
     with open(WORK_FILE, 'w') as configfile:
-            c.write(configfile)
+            PARSER.write(configfile)
 
     pid = os.popen("ps ax | grep GPIOSim | head -1 | awk '{print $1}'").read()
     os.kill(int(pid), signal.SIGUSR1)
@@ -194,18 +198,18 @@ def output(pin, value):
     either HIGH/LOW or a boolean (true = high)."""
     check()
     
-    c = RawConfigParser()
-    c.read(WORK_FILE)
+    
+    PARSER.read(WORK_FILE)
 
     pin = GPIO_NAMES.index("GPIO"+str(pin))
 
-    if c.getint("pin"+str(pin),"state") != OUT:
+    if PARSER.getint("pin"+str(pin),"state") != OUT:
         raise Exception
 
-    c.set("pin"+str(pin),"value",str(value))
+    PARSER.set("pin"+str(pin),"value",str(value))
 
     with open(WORK_FILE, 'w') as configfile:
-            c.write(configfile)
+            PARSER.write(configfile)
 
     pid = os.popen("ps ax | grep GPIOSim | head -1 | awk '{print $1}'").read()
     os.kill(int(pid), signal.SIGUSR1)
@@ -217,10 +221,10 @@ def input(pin):
 
     pin = GPIO_NAMES.index("GPIO"+str(pin))
     
-    c = RawConfigParser()
-    c.read(WORK_FILE)
+    
+    PARSER.read(WORK_FILE)
 
-    return c.getint("pin"+str(pin),"value")
+    return PARSER.getint("pin"+str(pin),"value")
 
 
 def set_high(pin):
