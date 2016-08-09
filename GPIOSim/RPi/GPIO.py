@@ -101,7 +101,6 @@ def setmode(mode):
     return
 
 def init():
-    cleanup()
     if not os.path.exists(WORK_FILE):
         os.makedirs(WORK_DIR)
 
@@ -121,7 +120,7 @@ def init():
 
 
 class Eventer(Thread):
-    
+
     def __init__(self):
         Thread.__init__(self)
         self.old_conf = {}
@@ -131,7 +130,6 @@ class Eventer(Thread):
         self.running = False
 
     def run(self):
-        
         while self.running:
             try:
                 PARSER.read(WORK_FILE)
@@ -141,20 +139,32 @@ class Eventer(Thread):
                         # RISING and BOTH
                         if self.old_conf[key]['value'] == 0 and section.getint('value') == 1:
                             if event_detector[PIN_TO_GPIO[key]] in [RISING, BOTH]:
-                                event_callback[PIN_TO_GPIO[key]](PIN_TO_GPIO[key])
+                                callback = Callbacker(PIN_TO_GPIO[key])
+                                callback.start()
                         # FALLING and BOTH
                         if self.old_conf[key]['value'] == 1 and section.getint('value') == 0:
                             if event_detector[PIN_TO_GPIO[key]] in [FALLING, BOTH]:
-                                event_callback[PIN_TO_GPIO[key]](PIN_TO_GPIO[key])
+                                callback = Callbacker(PIN_TO_GPIO[key])
+                                callback.start()
                     # save values
                     if self.old_conf.get(key) is None:
                         self.old_conf[key] = {}
                     self.old_conf[key]['value'] = section.getint('value')
                     self.old_conf[key]['state'] = section.getint('state')
                 # Sleep
-                time.sleep(0.1)
+                time.sleep(0.01)
             except Exception:
                 pass
+
+class Callbacker(Thread):
+
+    def __init__(self, gpio_id):
+        Thread.__init__(self)
+        self.gpio_id = gpio_id
+
+    def run(self):
+        event_callback[self.gpio_id](self.gpio_id)
+
 
 def check():
 	if not os.path.exists(WORK_FILE):
@@ -190,8 +200,10 @@ def setup(pin, mode, initial=LOW, pull_up_down=PUD_OFF):
     with open(WORK_FILE, 'w') as configfile:
             PARSER.write(configfile)
 
-    pid = os.popen("ps ax | grep GPIOSim | head -1 | awk '{print $1}'").read()
-    os.kill(int(pid), signal.SIGUSR1)
+    # FIXME This is really ugly !!!!!
+    pid = os.popen("ps ax |grep ':[0-9][0-9] GPIOSim'").read()
+    if pid != '':
+        os.kill(int(pid), signal.SIGUSR1)
 
 def output(pin, value):
     """Set the specified pin the provided high/low value.  Value should be
@@ -211,8 +223,11 @@ def output(pin, value):
     with open(WORK_FILE, 'w') as configfile:
             PARSER.write(configfile)
 
-    pid = os.popen("ps ax | grep GPIOSim | head -1 | awk '{print $1}'").read()
-    os.kill(int(pid), signal.SIGUSR1)
+    # FIXME This is really ugly !!!!!
+    pid = os.popen("ps ax |grep ':[0-9][0-9] GPIOSim'").read()
+    if pid != '':
+        os.kill(int(pid), signal.SIGUSR1)
+
 
 def input(pin):
     """Read the specified pin and return HIGH/true if the pin is pulled high,
